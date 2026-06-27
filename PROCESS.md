@@ -7,22 +7,28 @@ Dataset: 1,770 images (NEU Surface Defect Database) across 6 classes.
 ## Directory Structure
 ```
 surface_defect_classifier/
+├── app.py                      # Step 7: Gradio web UI for drag-and-drop inference
+├── setup.ps1                   # Windows setup script (venv + deps + run hint)
+├── CLAUDE.md                   # Project reference for Claude Code
+├── README.md                   # Public-facing project documentation
+├── PROCESS.md                  # This file: internal process documentation
 ├── data/
 │   ├── raw/                    # 1,770 original images (flat, class encoded in filename)
 │   └── processed/              # ImageFolder format (created by prepare_data.py)
 │       ├── train/              # 1,416 images (80%)
 │       └── val/                # 354 images (20%)
 ├── models/
-│   └── best_model.pth          # Best validation checkpoint (created by train.py)
+│   ├── best_model.pth          # Best validation checkpoint (created by train.py, tracked by git)
+│   └── confusion_matrix.png    # Optional: evaluation artifact (tracked by git if created)
 ├── src/
 │   ├── prepare_data.py         # Step 1: Organize raw data into ImageFolder format
 │   ├── model.py                # Step 2: Build ResNet18 with custom classification head
 │   ├── dataset.py              # Step 3: Create DataLoaders with transforms
 │   ├── train.py                # Step 4: Train model, save best checkpoint
 │   ├── evaluate.py             # Step 5: Evaluate best model with detailed metrics
-│   └── predict.py              # Step 6: Single-image inference
-├── requirements.txt            # Python dependencies
-└── .gitignore                  # Excludes venv, __pycache__, data/raw, models, .ipynb_checkpoints
+│   └── predict.py              # Step 6: Single-image inference (CLI)
+├── requirements.txt            # Python dependencies (includes gradio)
+└── .gitignore                  # Excludes venv, __pycache__, data/raw, models/* except best_model.pth/confusion_matrix.png
 ```
 
 ## Class Labels (alphabetical order, matches ImageFolder)
@@ -208,7 +214,7 @@ Final Validation: loss=0.0043 accuracy=1.0000
 
 ---
 
-### STEP 6: Inference (src/predict.py)
+### STEP 6: Inference CLI (src/predict.py)
 **Purpose**: Predict class of a single image file.
 
 **What it does**:
@@ -233,6 +239,35 @@ PYTHONPATH=. ./venv/Scripts/python.exe -m src.predict data/processed/val/crazing
 
 ---
 
+### STEP 7: Web UI (app.py)
+**Purpose**: Provide a drag-and-drop web interface for the trained model.
+
+**What it does**:
+1. Loads model + best checkpoint at startup (same as predict.py)
+2. Defines Gradio `Interface` with:
+   - Input: `gr.Image(type="pil")` — upload widget
+   - Output: `gr.Label(num_top_classes=6)` — ranked bar list of all 6 classes
+   - Title/description for the UI
+3. Prediction function applies validation transform, runs model, returns `{class: prob}` dict
+4. Launches local server on `http://127.0.0.1:7860` (port may vary)
+
+**Run**:
+```bash
+PYTHONPATH=. ./venv/Scripts/python.exe app.py
+```
+
+**Output**:
+```
+* Running on local URL:  http://127.0.0.1:7860
+* To create a public link, set `share=True` in `launch()`.
+```
+
+Open the printed URL in a browser, upload an image, see predictions.
+
+**Note**: This is intentionally separate from `src/predict.py` (the CLI version) — both share the same prediction logic conceptually, but `app.py` exists purely to give a no-terminal, click-based way to use the trained model.
+
+---
+
 ## Complete Pipeline Run (Fresh)
 
 ```bash
@@ -245,8 +280,11 @@ PYTHONPATH=. ./venv/Scripts/python.exe -m src.train
 # 3. Evaluate (loads best_model.pth)
 PYTHONPATH=. ./venv/Scripts/python.exe -m src.evaluate
 
-# 4. Predict on new images
+# 4. Predict on new images (CLI)
 PYTHONPATH=. ./venv/Scripts/python.exe -m src.predict data/processed/val/scratches/scratches_1.jpg
+
+# 5. Launch web UI (optional)
+PYTHONPATH=. ./venv/Scripts/python.exe app.py
 ```
 
 ---
@@ -260,6 +298,7 @@ numpy==2.5.0
 scikit-learn==1.9.0
 scipy==1.18.0
 matplotlib==3.11.0
+gradio
 ```
 
 Install:
@@ -297,6 +336,19 @@ Install:
 | `train.py` | 107 | Training loop, best checkpoint saving |
 | `evaluate.py` | 90 | Detailed validation metrics (report, confusion matrix) |
 | `predict.py` | 86 | Single-image inference CLI |
+
+---
+
+## Root-Level File Reference
+
+| File | Purpose |
+|------|---------|
+| `app.py` | Gradio web UI for drag-and-drop inference |
+| `setup.ps1` | Windows one-command setup (venv + deps + run hint) |
+| `CLAUDE.md` | Project reference for Claude Code |
+| `README.md` | Public-facing documentation |
+| `PROCESS.md` | This file: internal process documentation |
+| `requirements.txt` | Python dependencies |
 
 ---
 
